@@ -1,0 +1,39 @@
+{
+  "name": "beynt-desktop",
+  "version": "0.7.0",
+  "private": true,
+  "description": "Beynt desktop - your Beynt commands and notes from any app",
+  "homepage": "https://beynt.com",
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev --config src-tauri/tauri.dev.json",
+    "web": "vite",
+    "build": "tsc --noEmit && vite build",
+    "dist": "tauri build",
+    "tauri": "tauri",
+    "test": "vitest run && cargo test --manifest-path src-tauri/Cargo.toml"
+  },
+  "author": "Lucio",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.2.8",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@tauri-apps/api": "2.12.3",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.2",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "happy-dom": "^21.0.4",
+    "typescript": "^5.5.0",
+    "vite": "^7.3.7",
+    "vitest": "^4.1.12"
+  }
+}

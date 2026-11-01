@@ -1,0 +1,133 @@
+name: Release
+
+# A version tag (v0.6.1, matching package.json) builds the installers, each on its own system,
+# and attaches them with their SHA-256 to a draft release. Publishing the draft stays manual.
+# The update files are signed with the project's key (secrets TAURI_SIGNING_PRIVATE_KEY and
+# TAURI_SIGNING_PRIVATE_KEY_PASSWORD) and listed in latest.json: installed apps see a new version
+# only once the draft is published.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check that the tag matches package.json
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          if [ "$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::The tag $GITHUB_REF_NAME does not match package.json ($version)"
+            exit 1
+          fi
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+              --title "Beynt desktop ${GITHUB_REF_NAME#v}" \
+              --notes "The installers are not signed yet: see Install in the README before opening them."
+
+  build:
+    needs: draft
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            bundle: --bundles nsis
+          # app: the .app.tar.gz the updater installs; dmg: what people download.
+          - os: macos-latest
+            bundle: --target universal-apple-darwin --bundles app,dmg
+          # The oldest Ubuntu supported: a binary built on a newer glibc does not start on older systems.
+          - os: ubuntu-22.04
+            bundle: --bundles appimage,deb
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Linux libraries for Tauri
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - name: Both Mac architectures
+        if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: Build and sign the installers
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build ${{ matrix.bundle }} --config src-tauri/tauri.release.json
+      - name: Attach the installers to the draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          mkdir -p release
+          bundles() { find src-tauri/target -path '*/release/bundle/*' -name "$1"; }
+          # Each signature (.sig) keeps the name of its file: a renamed file keeps a valid signature.
+          for f in $(bundles '*-setup.exe'); do cp "$f" "release/Beynt-$version-win-x64.exe"; cp "$f.sig" "release/Beynt-$version-win-x64.exe.sig"; done
+          for f in $(bundles '*.dmg'); do cp "$f" "release/Beynt-$version-mac-universal.dmg"; done
+          for f in $(bundles '*.app.tar.gz'); do cp "$f" "release/Beynt-$version-mac-universal.app.tar.gz"; cp "$f.sig" "release/Beynt-$version-mac-universal.app.tar.gz.sig"; done
+          for f in $(bundles '*.AppImage'); do cp "$f" "release/Beynt-$version-linux-x86_64.AppImage"; cp "$f.sig" "release/Beynt-$version-linux-x86_64.AppImage.sig"; done
+          for f in $(bundles '*.deb'); do cp "$f" "release/Beynt-$version-linux-amd64.deb"; if [ -f "$f.sig" ]; then cp "$f.sig" "release/Beynt-$version-linux-amd64.deb.sig"; fi; done
+          cd release
+          shopt -s nullglob
+          files=(*.exe *.dmg *.app.tar.gz *.AppImage *.deb)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::No installer was built"
+            exit 1
+          fi
+          sums=()
+          for file in "${files[@]}"; do
+            node -e "const f = process.argv[1]; console.log(require('crypto').createHash('sha256').update(require('fs').readFileSync(f)).digest('hex') + '  ' + f)" "$file" > "$file.sha256"
+            sums+=("$file.sha256")
+          done
+          gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}" "${sums[@]}" *.sig
+
+  updater:
+    # latest.json: where installed apps look for a new version (the updater's endpoint in tauri.conf.json).
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Attach latest.json to the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern '*.sig' --dir sigs
+          node scripts/latest-json.mjs sigs > latest.json
+          cat latest.json
+          gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --clobber latest.json

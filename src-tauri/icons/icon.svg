@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Beynt app icon: the verified "b" badge -->
+  <rect width="512" height="512" rx="115" fill="#141312"/>
+  <g transform="translate(16 16) scale(5)">
+    <circle cx="48" cy="58" r="22.5" fill="#e85d04"/>
+    <path d="M30 20 V76" fill="none" stroke="#e85d04" stroke-width="9" stroke-linecap="round"/>
+    <path d="M40.5 58 L46.5 64.5 L58 52" fill="none" stroke="#f5f4f1" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

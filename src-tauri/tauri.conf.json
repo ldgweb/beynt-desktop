@@ -1,0 +1,55 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Beynt",
+  "version": "../package.json",
+  "identifier": "com.beynt.desktop",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run web",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "style-src": "'self'",
+        "img-src": "'self'",
+        "font-src": "'self'",
+        "connect-src": "ipc: http://ipc.localhost",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "frame-src": "'none'",
+        "form-action": "'none'"
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "dmg", "appimage", "deb"],
+    "category": "DeveloperTool",
+    "shortDescription": "Your Beynt commands and notes from any app",
+    "publisher": "ldgweb",
+    "homepage": "https://beynt.com",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
+    "macOS": {
+      "signingIdentity": "-"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc3Qzk3M0E5REVEMjZFM0UKUldRK2J0TGVxWFBKZDRRQ1d6MXI1TGpOMGpra3A0QVJucmtpOThiajJOL1hUTUF0K3pEV3BSNG8K",
+      "endpoints": ["https://github.com/ldgweb/beynt-desktop/releases/latest/download/latest.json"],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}
