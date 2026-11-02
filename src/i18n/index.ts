@@ -5,7 +5,6 @@ const en = {
   'nav.library': 'Library',
   'nav.settings': 'Settings',
   'menu.file': 'File',
-  'menu.view': 'View',
   'menu.help': 'Help',
   'menu.search': 'Search',
   'menu.quit': 'Quit',
@@ -25,7 +24,7 @@ type TranslationKey = keyof typeof en
 
 const it: Record<TranslationKey, string> = {
   'nav.library': 'Libreria', 'nav.settings': 'Impostazioni',
-  'menu.file': 'File', 'menu.view': 'Visualizza', 'menu.help': 'Aiuto', 'menu.search': 'Cerca', 'menu.quit': 'Esci',
+  'menu.file': 'File', 'menu.help': 'Aiuto', 'menu.search': 'Cerca', 'menu.quit': 'Esci',
   'settings.title': 'Impostazioni', 'settings.sections': 'Sezioni impostazioni', 'settings.appearance': 'Aspetto',
   'appearance.language': 'Lingua', 'appearance.language.hint': 'Automatico segue la lingua del sistema operativo.',
   'appearance.language.auto': 'Automatico', 'appearance.language.en': 'English', 'appearance.language.it': 'Italiano',

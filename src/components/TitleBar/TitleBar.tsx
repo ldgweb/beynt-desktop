@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { beynt } from '../../api'
-import { useWorkspaceStore } from '../../store/workspace'
 import { runAction } from '../../actions'
 import { useAppVersion } from '../../hooks/useAppVersion'
 import { isMac, isWindows } from '../../platform'
@@ -16,7 +15,6 @@ interface MenuItem {
   separator?: boolean
   /** Non-interactive row (version). */
   info?: boolean
-  checked?: boolean
   onClick?: () => void
 }
 
@@ -51,7 +49,7 @@ function Menu({ label, items }: { label: string; items: MenuItem[] }) {
             if (it.separator) return <div key={i} className="menu__sep" role="separator" />
             if (it.info) return <div key={i} className="menu__info"><span>{it.label}</span>{it.hint && <span>{it.hint}</span>}</div>
             return (
-              <button key={i} role="menuitem" className={`menu__item ${it.checked ? 'is-checked' : ''}`}
+              <button key={i} role="menuitem" className="menu__item"
                 onClick={() => { it.onClick?.(); setOpen(false) }}>
                 <span>{it.label}</span>
                 {it.hint && <span className="menu__hint">{it.hint}</span>}
@@ -64,23 +62,19 @@ function Menu({ label, items }: { label: string; items: MenuItem[] }) {
   )
 }
 
-/** Windows and Linux menus; on a Mac they live in the menu bar (src-tauri/src/menu.rs) and the bar keeps only the brand. */
+/**
+ * Windows and Linux menus; on a Mac they live in the menu bar (src-tauri/src/menu.rs) and the bar keeps only the brand.
+ * The sidebar already moves between the library and Settings: the menus hold only what it lacks.
+ */
 function WindowMenus() {
   const { t } = useI18n()
-  const surface = useWorkspaceStore((s) => s.surface)
   const version = useAppVersion()
 
   const fileItems: MenuItem[] = [
+    { label: t('menu.search'), hint: 'Ctrl+F', onClick: () => runAction('find') },
     { label: t('nav.settings'), hint: 'Ctrl+,', onClick: () => runAction('settings') },
     { separator: true },
     { label: t('menu.quit'), onClick: () => void beynt.app.quit() }
-  ]
-
-  const viewItems: MenuItem[] = [
-    { label: t('nav.library'), hint: 'Ctrl+1', checked: surface === 'library', onClick: () => runAction('library') },
-    { label: t('nav.settings'), hint: 'Ctrl+,', checked: surface === 'settings', onClick: () => runAction('settings') },
-    { separator: true },
-    { label: t('menu.search'), hint: 'Ctrl+F', onClick: () => runAction('find') }
   ]
 
   const helpItems: MenuItem[] = [
@@ -92,7 +86,6 @@ function WindowMenus() {
   return (
     <>
       <Menu label={t('menu.file')} items={fileItems} />
-      <Menu label={t('menu.view')} items={viewItems} />
       <Menu label={t('menu.help')} items={helpItems} />
     </>
   )

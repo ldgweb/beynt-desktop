@@ -111,12 +111,10 @@ mark { padding: 0 2px; border-radius: 3px; background: color-mix(in srgb, var(--
 .menu__button { height: 26px; padding: 0 9px; border-radius: var(--r-control); color: var(--text-2); }
 .menu__button:hover, .menu__button.is-open { background: var(--fill); color: var(--text); }
 .menu__list { position: absolute; top: calc(100% + 4px); left: 0; z-index: 50; min-width: 220px; padding: 4px; border-radius: var(--r-surface); background: var(--bg-raised); box-shadow: var(--shadow-menu); }
-/* Labels start after a column for the dot of the checked item. */
-.menu__item { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; height: 30px; padding: 0 10px 0 22px; border-radius: var(--r-control); text-align: left; }
+.menu__item { display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; height: 30px; padding: 0 10px; border-radius: var(--r-control); text-align: left; }
 .menu__item:hover:not(:disabled), .menu__item.is-selected { background: var(--fill); }
 .menu__item:disabled { color: var(--text-3); }
-.menu__item.is-checked::before { content: ''; position: absolute; left: 9px; top: calc(50% - 3px); width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
-.menu__info { display: flex; justify-content: space-between; gap: 24px; padding: 6px 10px 6px 22px; color: var(--text-3); font-size: 12px; }
+.menu__info { display: flex; justify-content: space-between; gap: 24px; padding: 6px 10px; color: var(--text-3); font-size: 12px; }
 .menu__hint { color: var(--text-3); font-size: 12px; }
 .menu__sep { height: 1px; margin: 4px 0; background: var(--border); }
 
