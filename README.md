@@ -3,12 +3,18 @@
 The desktop companion of [Beynt](https://beynt.com): your commands and notes at hand in any app.
 For Windows, macOS and Linux.
 
-![The search window: a note found by its title, a command, and a note found in its text](.github/palette.png)
+![The search window: a note found by its title, a command found by its tag, and a note found in its text](.github/palette.png)
 
 - **Search from any app** — press **Ctrl + Alt + B** (**⌥⇧Space** on a Mac, changeable in Settings),
   type a few words, press Enter. A command, query, config or prompt asks for its `{{placeholders}}`
   and lands on the clipboard; a note opens in beynt.com's reader. Before you type, the search shows
-  your favorites and what you use most lately; a stack's name in the query narrows it to that stack.
+  your favorites and what you use most lately.
+- **Narrow it down** — **Tab** picks a type (commands, queries, configs, prompts, notes), `#tag` keeps
+  what has that tag, and a stack's name keeps that stack. A word typed with one letter wrong, missing
+  or swapped still finds what you meant.
+
+![Filling the placeholders of a command: the result updates as you type, Enter copies it](.github/fill.png)
+
 - **Actions** — **Ctrl + Enter** (⌘↵) copies a note's title, ready to name it to an AI agent that
   reads Beynt, or copies a command as written; **Ctrl + K** (⌘K) lists every action of the selected
   item: copy the title or the link, open it on Beynt, add it to the favorites.
@@ -21,6 +27,8 @@ For Windows, macOS and Linux.
 - **Account** — the first window asks for an access key: it opens the page on Beynt where you create
   one (*Find work only*, that is `stacks:read` and `artifacts:read`). The key is kept in the system
   keychain, and the app only reads.
+
+![The library: favorites and recent items, a query with its placeholder filled in](.github/library.png)
 
 Beynt starts at login in the tray (Settings → Start-up), so the shortcut works right away; closing the
 window keeps it running in the tray or the Mac's menu bar, and the tray menu (⌘Q on a Mac) quits. On
