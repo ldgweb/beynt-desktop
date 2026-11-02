@@ -152,12 +152,19 @@ pub async fn sync(client: &Client, previous: &Cache, now: u64) -> Result<Cache, 
         }
     }
 
-    let fetched: Vec<(Artifact, Stack)> = stream::iter(to_fetch)
-        .map(|(id, stack)| async move { Ok::<_, api::Error>((client.artifact(id).await?, stack)) })
+    let fetched: Vec<Option<(Artifact, Stack)>> = stream::iter(to_fetch)
+        .map(|(id, stack)| async move {
+            match client.artifact(id).await {
+                Ok(artifact) => Ok(Some((artifact, stack))),
+                // Deleted after its index was read: the next index leaves it out too.
+                Err(api::Error::Status(404, _)) => Ok(None),
+                Err(error) => Err(error),
+            }
+        })
         .buffer_unordered(IN_FLIGHT)
         .try_collect()
         .await?;
-    for (artifact, stack) in fetched {
+    for (artifact, stack) in fetched.into_iter().flatten() {
         match artifact.kind.as_deref().and_then(Kind::parse) {
             Some(kind) => items.push(item(artifact, kind, &stack)),
             None => {
@@ -369,6 +376,16 @@ mod tests {
                 (1, "My toolbox", Kind::Cli, Some("sudo systemctl reload php8.4-fpm"))
             ]
         );
+    }
+
+    #[tokio::test]
+    async fn leaves_out_what_was_deleted_after_its_index_was_read() {
+        let beynt = serve(Remote { deleted: vec![3], ..Remote::default() }).await;
+        let client = Client::new(&beynt.url, "key").unwrap();
+        let cache = sync(&client, &Cache::default(), 1).await.unwrap();
+        let ids: Vec<u64> = cache.library.items.iter().map(|item| item.id).collect();
+        assert_eq!(ids, [2, 1]);
+        assert!(cache.skipped.is_empty());
     }
 
     #[tokio::test]

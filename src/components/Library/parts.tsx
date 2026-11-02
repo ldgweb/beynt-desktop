@@ -4,6 +4,7 @@ import { fill, PLACEHOLDER, placeholders, type ItemAction } from '../../core/com
 import { useI18n } from '../../i18n'
 import { IconCheck, IconNote, IconStar } from '../Sidebar/icons'
 import { hasModifier, isMac } from '../../platform'
+import { TYPE_FILTERS, type TypeFilter } from '../../hooks/useResults'
 
 export function useTypeLabel(): (type: ItemType) => string {
   const { text } = useI18n()
@@ -45,6 +46,21 @@ export function TypeMark({ type }: { type: ItemType }) {
   return type === 'note'
     ? <span className="type-note" title={typeLabel(type)}><IconNote size={13} /></span>
     : <span className={`type-dot type-dot--${type}`} title={typeLabel(type)} />
+}
+
+/** All types, or one: the same control in the library and the palette. */
+export function TypeFilterBar({ value, onChange }: { value: TypeFilter; onChange: (type: TypeFilter) => void }) {
+  const { text } = useI18n()
+  const typeLabel = useTypeLabel()
+  return (
+    <div className="segmented" role="group" aria-label={text('Type', 'Tipo')}>
+      {TYPE_FILTERS.map((type) => (
+        <button key={type} type="button" aria-pressed={value === type} onClick={() => onChange(type)}>
+          {type === 'all' ? text('All', 'Tutti') : <><TypeMark type={type} />{typeLabel(type)}</>}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 /** The first line of a command; for a note, the line where Beynt found the words, or where it lives. */

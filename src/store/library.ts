@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { BeyntCommand, BeyntItem, Library } from '../types'
-import { beynt } from '../api'
+import { beynt, errorText } from '../api'
 import { ranker, type ItemAction } from '../core/commands'
 
 interface LibraryState {
@@ -19,10 +19,6 @@ interface LibraryState {
   refresh: () => Promise<void>
   markUsed: (item: BeyntItem) => void
   toggleFavorite: (item: BeyntItem) => void
-}
-
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
 }
 
 export const useLibraryStore = create<LibraryState>()(
@@ -45,7 +41,7 @@ export const useLibraryStore = create<LibraryState>()(
           const result = await beynt.library.refresh()
           set({ library: result.library, loaded: true, error: result.error ?? null })
         } catch (error) {
-          set({ error: message(error) })
+          set({ error: errorText(error) })
         } finally {
           set({ refreshing: false })
         }

@@ -111,11 +111,12 @@ mark { padding: 0 2px; border-radius: 3px; background: color-mix(in srgb, var(--
 .menu__button { height: 26px; padding: 0 9px; border-radius: var(--r-control); color: var(--text-2); }
 .menu__button:hover, .menu__button.is-open { background: var(--fill); color: var(--text); }
 .menu__list { position: absolute; top: calc(100% + 4px); left: 0; z-index: 50; min-width: 220px; padding: 4px; border-radius: var(--r-surface); background: var(--bg-raised); box-shadow: var(--shadow-menu); }
-.menu__item { display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; height: 30px; padding: 0 10px; border-radius: var(--r-control); text-align: left; }
+/* Labels start after a column for the dot of the checked item. */
+.menu__item { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; height: 30px; padding: 0 10px 0 22px; border-radius: var(--r-control); text-align: left; }
 .menu__item:hover:not(:disabled), .menu__item.is-selected { background: var(--fill); }
 .menu__item:disabled { color: var(--text-3); }
-.menu__item.is-checked::before { content: ''; width: 6px; height: 6px; margin-right: -14px; border-radius: 50%; background: var(--accent); order: -1; }
-.menu__info { display: flex; justify-content: space-between; gap: 24px; padding: 6px 10px; color: var(--text-3); font-size: 12px; }
+.menu__item.is-checked::before { content: ''; position: absolute; left: 9px; top: calc(50% - 3px); width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.menu__info { display: flex; justify-content: space-between; gap: 24px; padding: 6px 10px 6px 22px; color: var(--text-3); font-size: 12px; }
 .menu__hint { color: var(--text-3); font-size: 12px; }
 .menu__sep { height: 1px; margin: 4px 0; background: var(--border); }
 
@@ -128,7 +129,8 @@ mark { padding: 0 2px; border-radius: 3px; background: color-mix(in srgb, var(--
 .sidebar__item.is-active svg { color: var(--accent); }
 .sidebar__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar__count { font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
-.sidebar__sub { height: 28px; padding-left: 28px; font-size: 12.5px; }
+/* A stack's name starts under the labels: the items' padding, a 16px icon and the gap. */
+.sidebar__sub { height: 28px; padding-left: 34px; font-size: 12.5px; }
 .sidebar__spacer { flex: 1; }
 .sidebar__update { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; padding: 8px 9px; border-radius: var(--r-control); background: var(--fill); font-size: 12px; }
 .sidebar__account { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: 11.5px; color: var(--text-3); }
@@ -149,6 +151,8 @@ mark { padding: 0 2px; border-radius: 3px; background: color-mix(in srgb, var(--
 .btn--quiet { border-color: transparent; color: var(--text-2); }
 .btn--quiet:hover:not(:disabled) { color: var(--text); }
 .btn--small { height: 26px; padding: 0 8px; font-size: 12px; }
+.btn--icon { flex: none; width: 28px; height: 28px; padding: 0; }
+.btn--icon[aria-pressed='true'] { color: var(--text); }
 .btn kbd { font-size: 10.5px; opacity: .7; }
 .btn svg { flex: none; }
 
@@ -180,6 +184,8 @@ mark { padding: 0 2px; border-radius: 3px; background: color-mix(in srgb, var(--
 .type-dot--config { background: var(--type-config); }
 .type-dot--prompt { background: var(--type-prompt); }
 .type-note { display: inline-flex; flex: none; justify-content: center; width: 8px; color: var(--type-note); }
+/* In a row the note's icon sits in the dots' 8px column: it keeps its size and overflows it evenly. */
+.type-note svg { flex: none; }
 .segmented .type-note, .tag .type-note { width: auto; }
 .tag { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; border-radius: 4px; background: var(--fill); color: var(--text-2); font-size: 11px; white-space: nowrap; }
 .verified { display: inline-flex; align-items: center; gap: 4px; color: var(--verified); font-size: 11.5px; }
@@ -228,6 +234,10 @@ mark { padding: 0 2px; border-radius: 3px; background: color-mix(in srgb, var(--
 .library__status { padding: 0 16px 8px; color: var(--text-3); font-size: 11.5px; }
 .library__none { padding: 24px; }
 .detail { display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow: auto; padding: 16px 18px; }
+.detail__head { display: flex; align-items: flex-start; gap: 8px; }
+.detail__head .detail__title { flex: 1; min-width: 0; }
+/* Centred on the title's first line, the star's edge on the column's. */
+.detail__head .btn--icon { margin: -3.5px -7px 0 0; }
 .detail__title { font-size: 15px; font-weight: 600; line-height: 1.4; }
 .detail__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--text-3); font-size: 12px; }
 .detail__code { margin: 0; padding: 12px; max-height: 280px; overflow: auto; border: 1px solid var(--border); border-radius: var(--r-surface); background: var(--code-bg); font: 12.5px/1.65 var(--mono); color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
@@ -236,7 +246,8 @@ mark { padding: 0 2px; border-radius: 3px; background: color-mix(in srgb, var(--
 .fill__field { display: flex; flex-direction: column; gap: 5px; }
 .fill__field > span { font: 12px var(--mono); color: var(--text-2); }
 .fill__actions { display: flex; justify-content: flex-end; gap: 8px; }
-.detail__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px; margin-top: -6px; }
+/* Quiet buttons have no edge: their text lines up with the buttons above. */
+.detail__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px; margin: -6px -8px 0 0; }
 
 /* ── Settings ──────────────────────────────────────────────── */
 .settings { display: grid; grid-template-columns: 180px minmax(0, 1fr); flex: 1; min-height: 0; }
@@ -260,15 +271,20 @@ mark { padding: 0 2px; border-radius: 3px; background: color-mix(in srgb, var(--
 .palette { position: relative; display: flex; flex-direction: column; height: 100vh; overflow: hidden; border-radius: var(--r-dialog); background: var(--bg); border: 1px solid var(--border-strong); }
 [data-material] body, [data-material] #root { background: transparent; }
 [data-material] .palette { background: color-mix(in srgb, var(--bg) 68%, transparent); border: 0; border-radius: 0; }
-.palette__search { position: relative; flex: none; border-bottom: 1px solid var(--border); }
+.palette__head { flex: none; border-bottom: 1px solid var(--border); }
+.palette__search { position: relative; display: block; }
+/* Lined up with the search icon. */
+.palette__types { padding: 0 18px 10px; }
 .palette__search > svg { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: var(--text-3); }
 .palette__input { width: 100%; height: 54px; padding: 0 18px 0 46px; border: 0; background: transparent; font-size: 16px; outline: none; }
 .palette__input::placeholder { color: var(--text-3); }
 .palette__rows { flex: 1; min-height: 0; overflow: auto; padding: 6px; }
-.palette__preview { flex: none; max-height: 96px; overflow: hidden; margin: 0 6px; padding: 8px 12px; border-top: 1px solid var(--border); font: 12px/1.6 var(--mono); color: var(--text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+/* At most four whole lines, with an ellipsis when there is more. The space below is a margin: the
+   clipped fifth line would show through a bottom padding. */
+.palette__preview { flex: none; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; margin: 0 6px 8px; padding: 8px 12px 0; border-top: 1px solid var(--border); font: 12px/1.6 var(--mono); color: var(--text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
 .palette__foot { display: flex; align-items: center; gap: 16px; flex: none; height: 34px; padding: 0 14px; border-top: 1px solid var(--border); color: var(--text-3); font-size: 11.5px; }
 .palette__foot kbd { margin-right: 4px; padding: 0 4px; border: 1px solid var(--border-strong); border-radius: 3px; font-size: 10.5px; }
-.palette__foot span:last-child { margin-left: auto; }
+.palette__foot-end { margin-left: auto; }
 /* ⌘/Ctrl+K: the selected item's actions, above the footer. */
 .palette__actions { top: auto; left: auto; right: 10px; bottom: 40px; min-width: 260px; }
 .palette__empty { padding: 28px 12px; color: var(--text-3); text-align: center; }

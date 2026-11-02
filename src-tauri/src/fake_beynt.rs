@@ -16,11 +16,13 @@ pub struct Remote {
     pub index_status: u16,
     /// How many requests answer 429 before the server serves again.
     pub throttle: usize,
+    /// Artifacts the index still lists but that answer 404: deleted in between.
+    pub deleted: Vec<u64>,
 }
 
 impl Default for Remote {
     fn default() -> Self {
-        Self { artifacts: sample(), typed: true, page: 200, index_status: 200, throttle: 0 }
+        Self { artifacts: sample(), typed: true, page: 200, index_status: 200, throttle: 0, deleted: Vec::new() }
     }
 }
 
@@ -131,7 +133,8 @@ fn answer(remote: &mut Remote, path: &str) -> (u16, Value) {
         }
         ["api", "v1", "artifacts", "search"] => search(remote, path),
         ["api", "v1", "artifacts", id] => {
-            match remote.artifacts.iter().find(|artifact| artifact["id"].as_u64() == id.parse().ok()) {
+            let found = remote.artifacts.iter().find(|artifact| artifact["id"].as_u64() == id.parse().ok());
+            match found.filter(|artifact| !remote.deleted.iter().any(|deleted| artifact["id"] == *deleted)) {
                 Some(artifact) => (200, json!({ "artifact": artifact })),
                 None => (404, json!({ "error": "not found" })),
             }

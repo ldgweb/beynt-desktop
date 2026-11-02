@@ -1,32 +1,35 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import type { BeyntCommand, BeyntItem } from '../../types'
-import { beynt } from '../../api'
-import { actionForKey, actionsFor, cap, home, search, type Group, type ItemAction } from '../../core/commands'
-import { connectLibrary, copyCommand, runItemAction, useLibraryStore, useRank } from '../../store/library'
-import { useNoteSearch } from '../../hooks/useNoteSearch'
+import { beynt, errorText } from '../../api'
+import { actionForKey, actionsFor, type ItemAction } from '../../core/commands'
+import { connectLibrary, copyCommand, runItemAction, useLibraryStore } from '../../store/library'
+import { TYPE_FILTERS, useResults, type TypeFilter } from '../../hooks/useResults'
 import { useI18n } from '../../i18n'
 import { hasModifier, isMac } from '../../platform'
 import { IconCheck, IconSearch } from '../Sidebar/icons'
-import { actionKeys, FillFields, GroupLabel, ItemRow, MarkedText, useActionLabel } from './parts'
+import { actionKeys, FillFields, GroupLabel, ItemRow, MarkedText, TypeFilterBar, useActionLabel } from './parts'
 
 const STALE_MS = 5 * 60_000
 const SHOWN = 50
 
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+/** The type after `type` in the filter, or before it with `step` -1, going round. */
+function nextType(type: TypeFilter, step: 1 | -1): TypeFilter {
+  const count = TYPE_FILTERS.length
+  return TYPE_FILTERS[(TYPE_FILTERS.indexOf(type) + step + count) % count]
 }
 
 /**
  * The global-shortcut window: type, arrows, Enter. Enter runs an item's main action (a command is
  * on the clipboard, a note opens on the web), ⌘/Ctrl+Enter the second one, ⌘/Ctrl+K lists them all.
+ * Tab and Shift+Tab narrow the list to a type.
  */
 export function Palette() {
-  const { text, language } = useI18n()
+  const { text } = useI18n()
   const actionLabel = useActionLabel()
   const library = useLibraryStore((s) => s.library)
   const favorites = useLibraryStore((s) => s.favorites)
-  const rank = useRank()
   const [query, setQuery] = useState('')
+  const [type, setType] = useState<TypeFilter>('all')
   const [selected, setSelected] = useState(0)
   const [filling, setFilling] = useState<BeyntCommand | null>(null)
   // The open list of actions, and the one picked in it.
@@ -35,40 +38,22 @@ export function Palette() {
   const [error, setError] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const list = useRef<HTMLUListElement>(null)
-  const hits = useNoteSearch(query)
-
-  const groups = useMemo((): Group<BeyntItem>[] => {
-    if (!query.trim()) {
-      const [pinned, recent, rest] = home(library.items, favorites, rank)
-      return cap([
-        { label: text('Favorites', 'Preferiti'), items: pinned },
-        { label: text('Recent', 'Recenti'), items: recent },
-        { label: pinned.length || recent.length ? text('All', 'Tutti') : null, items: rest }
-      ], SHOWN)
-    }
-    const found = search(library.items, query, rank).slice(0, SHOWN)
-    const shown = new Set(found.map((item) => item.id))
-    return cap([
-      { label: null, items: found },
-      { label: text('In the text of notes', 'Nel testo delle note'), items: hits.filter((hit) => !shown.has(hit.id)) }
-    ], SHOWN * 2)
-  }, [library.items, favorites, rank, query, hits, text, language])
-  const results = useMemo(() => groups.flatMap((group) => group.items), [groups])
+  const { groups, items: results } = useResults(query, type, 'all', SHOWN)
   const current = results[selected] as BeyntItem | undefined
   const actions = current ? actionsFor(current) : []
   const isFavorite = (item: BeyntItem): boolean => favorites.includes(item.id)
 
   useEffect(connectLibrary, [])
   useEffect(() => beynt.palette.onOpened(() => {
-    setQuery(''); setSelected(0); setFilling(null); setPicked(null); setCopied(false); setError(null)
+    setQuery(''); setType('all'); setSelected(0); setFilling(null); setPicked(null); setCopied(false); setError(null)
     input.current?.focus()
     const { library: saved, refreshing } = useLibraryStore.getState()
     if (!refreshing && (!saved.syncedAt || Date.now() - saved.syncedAt > STALE_MS)) void useLibraryStore.getState().refresh()
   }), [])
-  useEffect(() => { setSelected(0); setPicked(null); setError(null) }, [query])
+  useEffect(() => { setSelected(0); setPicked(null); setError(null) }, [query, type])
   useEffect(() => { list.current?.querySelector('.is-selected')?.scrollIntoView({ block: 'nearest' }) }, [selected])
 
-  const fail = (failure: unknown): void => setError(message(failure))
+  const fail = (failure: unknown): void => setError(errorText(failure))
   const showCopied = (): void => {
     setCopied(true)
     setTimeout(() => void beynt.palette.hide(), 350)
@@ -97,7 +82,11 @@ export function Palette() {
             footer={<button type="button" className="btn btn--quiet" onClick={back}>{text('Back', 'Indietro')}</button>} />
           {error && <p className="error-text" role="alert">{error}</p>}
         </div>
-        <div className="palette__foot"><span><kbd>↵</kbd>{text('copy', 'copia')}</span><span><kbd>Esc</kbd>{text('back', 'indietro')}</span><span>{filling.stackName}</span></div>
+        <div className="palette__foot">
+          <span><kbd>↵</kbd>{text('Copy', 'Copia')}</span>
+          <span><kbd>Esc</kbd>{text('Back', 'Indietro')}</span>
+          <span className="palette__foot-end">{filling.stackName}</span>
+        </div>
       </div>
     )
   }
@@ -114,6 +103,7 @@ export function Palette() {
       else if (e.key === 'ArrowUp') { e.preventDefault(); setPicked((i) => Math.max((i ?? 0) - 1, 0)) }
       else if (e.key === 'Enter') { e.preventDefault(); run(actions[picked], current) }
     } else if (e.key === 'Escape') { e.preventDefault(); void beynt.palette.hide() }
+    else if (e.key === 'Tab' && !mod && !e.altKey) { e.preventDefault(); setType((now) => nextType(now, e.shiftKey ? -1 : 1)) }
     else if (e.key === 'ArrowDown') { e.preventDefault(); setSelected((i) => Math.min(i + 1, results.length - 1)) }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setSelected((i) => Math.max(i - 1, 0)) }
     else if (current) {
@@ -125,12 +115,18 @@ export function Palette() {
   let index = -1
   return (
     <div className="palette" onKeyDown={onKey}>
-      <label className="palette__search">
-        <IconSearch size={18} />
-        <input ref={input} className="palette__input" value={query} autoFocus spellCheck={false}
-          placeholder={text('Search commands and notes', 'Cerca comandi e note')}
-          aria-label={text('Search commands and notes', 'Cerca comandi e note')} onChange={(e) => setQuery(e.target.value)} />
-      </label>
+      <header className="palette__head">
+        <label className="palette__search">
+          <IconSearch size={18} />
+          <input ref={input} className="palette__input" value={query} autoFocus spellCheck={false}
+            placeholder={text('Search commands and notes', 'Cerca comandi e note')}
+            aria-label={text('Search commands and notes', 'Cerca comandi e note')} onChange={(e) => setQuery(e.target.value)} />
+        </label>
+        {/* The typing stays in the search field. */}
+        <div className="palette__types" onMouseDown={(e) => e.preventDefault()}>
+          <TypeFilterBar value={type} onChange={setType} />
+        </div>
+      </header>
       <ul ref={list} className="palette__rows rows" role="listbox">
         {groups.flatMap((group) => [
           group.label ? <GroupLabel key={`label:${group.label}`}>{group.label}</GroupLabel> : null,
@@ -171,6 +167,7 @@ export function Palette() {
         {current && actions.slice(0, 2).map((action, position) => (
           <span key={action}><kbd>{actionKeys(action, position)}</kbd>{actionLabel(action, isFavorite(current))}</span>
         ))}
+        <span className="palette__foot-end"><kbd>Tab</kbd>{text('Type', 'Tipo')}</span>
         <span><kbd>{isMac ? '⌘K' : 'Ctrl K'}</kbd>{text('Actions', 'Azioni')}</span>
       </div>
     </div>

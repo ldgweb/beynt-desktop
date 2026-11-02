@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceleratorFor, actionForKey, actionsFor, byFolder, cap, fill, home, keyLabel, placeholders, ranker, search } from './commands'
+import { acceleratorFor, actionForKey, actionsFor, byFolder, cap, fill, home, keyLabel, oneEditApart, placeholders, ranker, search } from './commands'
 import type { BeyntCommand, BeyntItem, BeyntNote } from '../types'
 
 const command = (id: number, title: string, text: string, patch: Partial<BeyntCommand> = {}): BeyntCommand => ({
@@ -60,6 +60,32 @@ describe('search', () => {
 
   it('orders by rank, then title, with an empty query', () => {
     expect(search(list, '  ', by({ 3: 5, 2: 1 })).map((c) => c.id)).toEqual([3, 2, 1])
+  })
+
+  it('forgives one typo in a word that nothing contains', () => {
+    expect(search(list, 'raivvia').map((c) => c.id)).toEqual([1]) // two letters swapped
+    expect(search(list, 'aggiornameto ubuntu').map((c) => c.id)).toEqual([2]) // a letter missing
+    expect(search(list, 'bakcu').map((c) => c.id)).toEqual([3]) // still typing, with a swap
+    expect(search(list, 'acmr').map((c) => c.id)).toEqual([3]) // in the stack's name
+    expect(search(list, 'riavvai php').map((c) => c.id)).toEqual([1])
+    expect(search(list, 'riavvai nginx')).toEqual([])
+  })
+
+  it('takes no word for a typo when an item contains it, nor a short one', () => {
+    const more = [...list, command(4, 'Riavvio', 'reboot')]
+    expect(search(more, 'riavvia').map((c) => c.id)).toEqual([1])
+    expect(search(list, 'pjp')).toEqual([])
+  })
+})
+
+describe('oneEditApart', () => {
+  it('allows one letter added, dropped, changed, or two neighbours swapped', () => {
+    for (const [a, b] of [['nginx', 'nginx'], ['ngnx', 'nginx'], ['nginxx', 'nginx'], ['ngimx', 'nginx'], ['nignx', 'nginx'], ['ngixn', 'nginx']]) {
+      expect(oneEditApart(a, b), `${a} ${b}`).toBe(true)
+    }
+    for (const [a, b] of [['ngx', 'nginx'], ['ignnx', 'nginx'], ['nxgin', 'nginx'], ['apache', 'nginx']]) {
+      expect(oneEditApart(a, b), `${a} ${b}`).toBe(false)
+    }
   })
 })
 

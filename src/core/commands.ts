@@ -36,21 +36,56 @@ export function ranker(lastUsed: Record<number, number>, uses: Record<number, nu
   }
 }
 
+const WORD = /[\p{L}\p{N}]+/gu
+/** Shorter words are a letter away from too many others to be taken for typos. */
+const TYPO_MIN_LENGTH = 4
+
+/** True when `a` becomes `b` by adding, dropping or changing one letter, or by swapping two neighbours. */
+export function oneEditApart(a: string, b: string): boolean {
+  if (a === b) return true
+  if (Math.abs(a.length - b.length) > 1) return false
+  let i = 0
+  while (a[i] === b[i]) i++
+  const restA = a.slice(i)
+  const restB = b.slice(i)
+  if (a.length < b.length) return restA === restB.slice(1)
+  if (a.length > b.length) return restA.slice(1) === restB
+  return restA.slice(1) === restB.slice(1) || (restA[0] === restB[1] && restA[1] === restB[0] && restA.slice(2) === restB.slice(2))
+}
+
+/** A mistyped word near `word`, or near its start while it is still being typed. */
+function near(typed: string, word: string): boolean {
+  return [typed.length - 1, typed.length, typed.length + 1].some((length) => oneEditApart(typed, word.slice(0, length)))
+}
+
 /**
  * Every word must appear somewhere (title, text, tags, stack, path; notes have no text here). A word
  * that starts a word of the title counts twice, one inside it once; then the rank, then the title.
+ * A word that no item contains is taken for a typo: it matches a word of a title, tag, stack or path
+ * one letter away, and counts once when that word is in the title.
  */
 export function search<T extends BeyntItem>(items: T[], query: string, rank: (item: T) => number = () => 0): T[] {
   const words = fold(query).split(/\s+/).filter(Boolean)
-  const scored: { item: T; score: number; rank: number }[] = []
-  for (const item of items) {
+  const entries = items.map((item) => {
     const title = fold(item.title)
-    const text = item.type === 'note' ? '' : item.text
-    const haystack = `${title}\n${fold(text)}\n${fold(item.tags.join(' '))}\n${fold(item.stackName)}\n${fold(item.path ?? '')}`
-    if (!words.every((word) => haystack.includes(word))) continue
-    const starts = title.split(/[^\p{L}\p{N}]+/u)
-    const score = words.reduce((sum, word) => sum + (starts.some((start) => start.startsWith(word)) ? 2 : title.includes(word) ? 1 : 0), 0)
-    scored.push({ item, score, rank: rank(item) })
+    const names = `${title}\n${fold(item.tags.join(' '))}\n${fold(item.stackName)}\n${fold(item.path ?? '')}`
+    return { item, title, names, haystack: item.type === 'note' ? names : `${names}\n${fold(item.text)}` }
+  })
+  const typos = new Set(words.filter((word) => word.length >= TYPO_MIN_LENGTH && !entries.some((entry) => entry.haystack.includes(word))))
+  const scored: { item: T; score: number; rank: number }[] = []
+  for (const { item, title, names, haystack } of entries) {
+    const titleWords = title.match(WORD) ?? []
+    // Each word's points, or null when the item lacks it.
+    const points = words.map((word): number | null => {
+      if (typos.has(word)) {
+        if (titleWords.some((other) => near(word, other))) return 1
+        return (names.match(WORD) ?? []).some((other) => near(word, other)) ? 0 : null
+      }
+      if (!haystack.includes(word)) return null
+      return titleWords.some((start) => start.startsWith(word)) ? 2 : title.includes(word) ? 1 : 0
+    })
+    if (points.includes(null)) continue
+    scored.push({ item, score: points.reduce<number>((sum, value) => sum + (value ?? 0), 0), rank: rank(item) })
   }
   return scored
     .sort((a, b) => b.score - a.score || b.rank - a.rank || a.item.title.localeCompare(b.item.title))

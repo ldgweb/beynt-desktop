@@ -43,8 +43,9 @@ The installers are on the [Releases](../../releases) page, each with its SHA-256
 
 **Updates** — from 0.7.0 the app looks for a new version at start and every few hours. When there is
 one, the sidebar says so; *Install* downloads it from this repository's releases, installs it only if
-it is signed with the project's key, and starts the new version. On Linux the AppImage updates itself;
-for the `.deb`, install the new `.deb`. Versions before 0.7.0 update by installing over them once.
+it is signed with the project's key, and starts the new version. On Linux the AppImage and the `.deb`
+update the same way (the `.deb` asks for the administrator password). Versions before 0.7.0 update by
+installing over them once.
 
 Windows is where the app is used every day; the macOS and Linux builds come from CI and still need
 trying on real machines. Reports are welcome.

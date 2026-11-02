@@ -1,25 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { COMMAND_TYPES, type BeyntCommand, type BeyntItem, type ItemType, type PaletteStatus } from '../../types'
-import { beynt } from '../../api'
-import { actionForKey, actionsFor, byFolder, cap, home, keyLabel as formatKeys, placeholders, search, type Group, type ItemAction } from '../../core/commands'
-import { copyCommand, runItemAction, useLibraryStore, useRank } from '../../store/library'
+import { useEffect, useRef, useState } from 'react'
+import type { BeyntCommand, BeyntItem, PaletteStatus } from '../../types'
+import { beynt, errorText } from '../../api'
+import { actionForKey, actionsFor, keyLabel as formatKeys, placeholders, type ItemAction } from '../../core/commands'
+import { copyCommand, runItemAction, useLibraryStore } from '../../store/library'
 import { useAccountStore } from '../../store/account'
 import { useWorkspaceStore } from '../../store/workspace'
-import { useNoteSearch } from '../../hooks/useNoteSearch'
+import { useResults, type TypeFilter } from '../../hooks/useResults'
 import { toast } from '../../store/toasts'
 import { useI18n } from '../../i18n'
 import { IconExternal, IconLibrary, IconSearch, IconStar, IconSync } from '../Sidebar/icons'
 import { hasModifier, isMac } from '../../platform'
-import { actionKeys, FillFields, GroupLabel, ItemRow, TypeMark, useActionLabel, useTypeLabel } from './parts'
+import { actionKeys, FillFields, GroupLabel, ItemRow, TypeFilterBar, TypeMark, useActionLabel, useTypeLabel } from './parts'
 
 const SHOWN = 300
-const TYPES: ItemType[] = [...COMMAND_TYPES, 'note']
-// Actions with a place of their own in the detail: the fields and their Copy buttons.
-const IN_FIELDS: ItemAction[] = ['fill', 'copy', 'copyRaw']
-
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
+// Actions with a place of their own in the detail: the fields and their Copy buttons, the star by the title.
+const PLACED: ItemAction[] = ['fill', 'copy', 'copyRaw', 'favorite']
 
 function Detail({ item, favorite, onRun, onCopy, fillFocus }: { item: BeyntItem | undefined; favorite: boolean; onRun: (action: ItemAction, item: BeyntItem) => void; onCopy: (command: BeyntCommand, text: string) => void; fillFocus: number }) {
   const { text, language } = useI18n()
@@ -27,11 +22,18 @@ function Detail({ item, favorite, onRun, onCopy, fillFocus }: { item: BeyntItem 
   const actionLabel = useActionLabel()
   if (!item) return <aside className="detail"><p className="detail__empty">{text('Select an item to see it here.', 'Seleziona un elemento per vederlo qui.')}</p></aside>
   const actions = actionsFor(item)
-  const others = actions.filter((action, index) => index > 0 && !IN_FIELDS.includes(action))
+  const others = actions.filter((action, index) => index > 0 && !PLACED.includes(action))
+  const favoriteLabel = actionLabel('favorite', favorite)
   return (
     <aside className="detail" aria-label={text('Selected item', 'Elemento selezionato')}>
       <div>
-        <h2 className="detail__title">{item.title}</h2>
+        <div className="detail__head">
+          <h2 className="detail__title">{item.title}</h2>
+          <button className="btn btn--quiet btn--icon" aria-pressed={favorite} aria-label={favoriteLabel}
+            title={`${favoriteLabel} (${actionKeys('favorite', actions.indexOf('favorite'))})`} onClick={() => onRun('favorite', item)}>
+            <IconStar size={15} filled={favorite} />
+          </button>
+        </div>
         <div className="detail__meta">
           <span className="tag"><TypeMark type={item.type} />{typeLabel(item.type)}</span>
           <span className="tag">{item.stackName}</span>
@@ -47,15 +49,11 @@ function Detail({ item, favorite, onRun, onCopy, fillFocus }: { item: BeyntItem 
         )
         : <FillFields key={`${item.id}:${fillFocus}`} command={item} autoFocus={placeholders(item.text).length > 0 && fillFocus > 0} onCopy={(value) => onCopy(item, value)} />}
       <div className="detail__actions">
-        {others.map((action) => {
-          const keys = actionKeys(action, actions.indexOf(action))
-          return (
-            <button key={action} className="btn btn--quiet btn--small" title={keys ?? undefined}
-              aria-pressed={action === 'favorite' ? favorite : undefined} onClick={() => onRun(action, item)}>
-              {action === 'favorite' && <IconStar size={13} filled={favorite} />}{actionLabel(action, favorite)}
-            </button>
-          )
-        })}
+        {others.map((action) => (
+          <button key={action} className="btn btn--quiet btn--small" title={actionKeys(action, actions.indexOf(action)) ?? undefined} onClick={() => onRun(action, item)}>
+            {actionLabel(action, favorite)}
+          </button>
+        ))}
       </div>
       {(item.path || item.updatedAt) && (
         <p className="hint">
@@ -69,18 +67,17 @@ function Detail({ item, favorite, onRun, onCopy, fillFocus }: { item: BeyntItem 
 
 export function LibraryPanel() {
   const { t, text, language } = useI18n()
-  const typeLabel = useTypeLabel()
   const { library, loaded, refreshing, error, favorites } = useLibraryStore()
-  const rank = useRank()
   const connected = useAccountStore((s) => s.connected)
   const stack = useWorkspaceStore((s) => s.stack)
   const [query, setQuery] = useState('')
-  const [type, setType] = useState<ItemType | 'all'>('all')
+  const [type, setType] = useState<TypeFilter>('all')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [fillFocus, setFillFocus] = useState(0)
   const [shortcut, setShortcut] = useState<PaletteStatus | null>(null)
   const searchBox = useRef<HTMLInputElement>(null)
   const rows = useRef<HTMLUListElement>(null)
+  const { groups, items: results, total, matched } = useResults(query, type, stack, SHOWN)
 
   useEffect(() => { void beynt.palette.status().then(setShortcut) }, [])
   useEffect(() => {
@@ -89,47 +86,19 @@ export function LibraryPanel() {
     return () => window.removeEventListener('beynt:find', focus)
   }, [])
 
-  const inStack = useMemo(() => library.items.filter((item) =>
-    stack === 'all' || (stack === 'favorites' ? favorites.includes(item.id) : item.stackId === stack)), [library.items, stack, favorites])
-  const ofType = useMemo(() => inStack.filter((item) => type === 'all' || item.type === type), [inStack, type])
-  const found = useMemo(() => search(ofType, query, rank), [ofType, query, rank])
-  const hits = useNoteSearch(query, typeof stack === 'number' ? stack : undefined, stack !== 'favorites' && (type === 'all' || type === 'note'))
-  const groups = useMemo((): Group<BeyntItem>[] => {
-    if (query.trim()) {
-      const shown = new Set(found.map((item) => item.id))
-      return cap([
-        { label: null, items: found },
-        { label: text('In the text of notes', 'Nel testo delle note'), items: hits.filter((hit) => !shown.has(hit.id)) }
-      ], SHOWN)
-    }
-    // A stack reads like its folders on Beynt; everything starts from favorites and recent uses.
-    if (typeof stack === 'number') return cap(byFolder(ofType), SHOWN)
-    if (stack === 'favorites') return cap([{ label: null, items: found }], SHOWN)
-    const [pinned, recent, rest] = home(ofType, favorites, rank)
-    return cap([
-      { label: text('Favorites', 'Preferiti'), items: pinned },
-      { label: text('Recent', 'Recenti'), items: recent },
-      { label: pinned.length || recent.length ? text('All', 'Tutti') : null, items: rest }
-    ], SHOWN)
-  }, [query, found, hits, stack, ofType, favorites, rank, text, language])
-  const results = useMemo(() => groups.flatMap((group) => group.items), [groups])
   const selected = results.find((item) => item.id === selectedId) ?? results[0]
-  const title = stack === 'favorites' ? text('Favorites', 'Preferiti') : typeof stack === 'number' ? inStack[0]?.stackName : null
+  const title = stack === 'favorites'
+    ? text('Favorites', 'Preferiti')
+    : typeof stack === 'number' ? library.items.find((item) => item.stackId === stack)?.stackName : undefined
 
   useEffect(() => { rows.current?.querySelector('.is-selected')?.scrollIntoView({ block: 'nearest' }) }, [selected?.id])
 
-  const copy = (command: BeyntCommand, value: string): void => {
-    copyCommand(command, value).then(
-      () => toast(text('Copied — paste it where you need it', 'Copiato — incollalo dove ti serve'), 'success'),
-      (error: unknown) => toast(message(error), 'error')
-    )
-  }
+  const copied = (): void => toast(text('Copied — paste it where you need it', 'Copiato — incollalo dove ti serve'), 'success')
+  const failed = (failure: unknown): void => toast(errorText(failure), 'error')
+  const copy = (command: BeyntCommand, value: string): void => { copyCommand(command, value).then(copied, failed) }
   const run = (action: ItemAction, item: BeyntItem): void => {
     if (action === 'fill') { setFillFocus((n) => n + 1); return }
-    runItemAction(action, item).then(
-      (done) => { if (done === 'copied') toast(text('Copied — paste it where you need it', 'Copiato — incollalo dove ti serve'), 'success') },
-      (error: unknown) => toast(message(error), 'error')
-    )
+    runItemAction(action, item).then((done) => { if (done === 'copied') copied() }, failed)
   }
   const move = (delta: number): void => {
     const index = Math.max(0, results.findIndex((item) => item.id === selected?.id))
@@ -169,12 +138,7 @@ export function LibraryPanel() {
                 }} />
               <kbd>{isMac ? '⌘F' : 'Ctrl F'}</kbd>
             </label>
-            <div className="segmented" role="group" aria-label={text('Type', 'Tipo')}>
-              <button aria-pressed={type === 'all'} onClick={() => setType('all')}>{text('All', 'Tutti')}</button>
-              {TYPES.map((entry) => (
-                <button key={entry} aria-pressed={type === entry} onClick={() => setType(entry)}><TypeMark type={entry} />{typeLabel(entry)}</button>
-              ))}
-            </div>
+            <TypeFilterBar value={type} onChange={(next) => { setType(next); setSelectedId(null) }} />
           </div>
 
           {!connected && (
@@ -188,7 +152,7 @@ export function LibraryPanel() {
             : text(`Another app already uses ${keyLabel}: change it in Settings.`, `Un’altra app usa già ${keyLabel}: cambiala in Impostazioni.`)}</p>}
           {error && <p className="library__status error-text">{text('Update failed, showing the saved copy: ', 'Aggiornamento non riuscito, mostro la copia salvata: ')}{error}</p>}
           <p className="library__status">
-            {query || type !== 'all' ? text(`${found.length} of ${inStack.length}`, `${found.length} di ${inStack.length}`) : t('library.count', { count: inStack.length })}
+            {query || type !== 'all' ? text(`${matched} of ${total}`, `${matched} di ${total}`) : t('library.count', { count: total })}
             {library.syncedAt && <> · {text('updated ', 'aggiornata alle ')}{new Date(library.syncedAt).toLocaleTimeString(language, { hour: '2-digit', minute: '2-digit' })}</>}
           </p>
 

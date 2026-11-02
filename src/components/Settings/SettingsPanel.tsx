@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { PaletteStatus, StartupStatus } from '../../types'
-import { beynt } from '../../api'
+import { beynt, errorText } from '../../api'
 import { useWorkspaceStore, type SettingsSection } from '../../store/workspace'
 import { useAccountStore } from '../../store/account'
 import { useSettingsStore, type AppTheme } from '../../store/settings'
@@ -39,7 +39,7 @@ function AccountSection() {
       await useAccountStore.getState().refresh()
       setToken('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(errorText(err))
     } finally {
       setBusy(false)
     }

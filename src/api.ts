@@ -20,6 +20,11 @@ function subscribe<T>(event: string, handler: (payload: T) => void): () => void 
   return () => { void stop.then((unlisten) => unlisten()) }
 }
 
+/** What to show for a failed call: the Rust side rejects with a message in the window's language. */
+export function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 /** Everything privileged runs in the Rust process: the windows only ask. Errors arrive as messages. */
 export const beynt = {
   account: {

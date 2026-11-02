@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { UpdateInfo } from '../../types'
-import { beynt } from '../../api'
+import { beynt, errorText } from '../../api'
 import { useWorkspaceStore } from '../../store/workspace'
 import { useLibraryStore } from '../../store/library'
 import { useAccountStore } from '../../store/account'
@@ -22,7 +22,7 @@ function UpdateNotice() {
     setInstalling(true)
     beynt.update.install().catch((error: unknown) => {
       setInstalling(false)
-      toast(error instanceof Error ? error.message : String(error), 'error')
+      toast(errorText(error), 'error')
     })
   }
   return (
