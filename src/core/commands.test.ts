@@ -71,6 +71,15 @@ describe('search', () => {
     expect(search(list, 'riavvai nginx')).toEqual([])
   })
 
+  it('keeps the items with a tag that starts with each #tag', () => {
+    const tagged = [...list, command(4, 'PHP info', 'php -i', { tags: ['PHP', 'debug'] })]
+    expect(search(tagged, '#php').map((c) => c.id)).toEqual([4, 1])
+    expect(search(tagged, '#ph #deb').map((c) => c.id)).toEqual([4])
+    expect(search(tagged, 'riavvia #php').map((c) => c.id)).toEqual([1])
+    expect(search(tagged, '#nginx')).toEqual([])
+    expect(search(tagged, '#').map((c) => c.id)).toHaveLength(4)
+  })
+
   it('takes no word for a typo when an item contains it, nor a short one', () => {
     const more = [...list, command(4, 'Riavvio', 'reboot')]
     expect(search(more, 'riavvia').map((c) => c.id)).toEqual([1])

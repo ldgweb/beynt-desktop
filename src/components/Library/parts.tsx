@@ -11,6 +11,18 @@ export function useTypeLabel(): (type: ItemType) => string {
   return (type) => ({ cli: text('Command', 'Comando'), query: 'Query', config: 'Config', prompt: 'Prompt', note: text('Note', 'Nota') })[type]
 }
 
+/** A type's name for a filter: the items of that type. */
+function useTypesLabel(): (type: ItemType) => string {
+  const { text } = useI18n()
+  return (type) => ({
+    cli: text('Commands', 'Comandi'),
+    query: text('Queries', 'Query'),
+    config: text('Configs', 'Config'),
+    prompt: text('Prompts', 'Prompt'),
+    note: text('Notes', 'Note')
+  })[type]
+}
+
 export function useActionLabel(): (action: ItemAction, favorite: boolean) => string {
   const { text } = useI18n()
   return (action, favorite) => ({
@@ -51,12 +63,12 @@ export function TypeMark({ type }: { type: ItemType }) {
 /** All types, or one: the same control in the library and the palette. */
 export function TypeFilterBar({ value, onChange }: { value: TypeFilter; onChange: (type: TypeFilter) => void }) {
   const { text } = useI18n()
-  const typeLabel = useTypeLabel()
+  const typesLabel = useTypesLabel()
   return (
     <div className="segmented" role="group" aria-label={text('Type', 'Tipo')}>
       {TYPE_FILTERS.map((type) => (
         <button key={type} type="button" aria-pressed={value === type} onClick={() => onChange(type)}>
-          {type === 'all' ? text('All', 'Tutti') : <><TypeMark type={type} />{typeLabel(type)}</>}
+          {type === 'all' ? text('All', 'Tutti') : <><TypeMark type={type} />{typesLabel(type)}</>}
         </button>
       ))}
     </div>

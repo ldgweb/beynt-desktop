@@ -58,19 +58,31 @@ function near(typed: string, word: string): boolean {
   return [typed.length - 1, typed.length, typed.length + 1].some((length) => oneEditApart(typed, word.slice(0, length)))
 }
 
+/** The words to look for, and the `#tags` an item must have (folded, without the #). */
+export function parseQuery(query: string): { words: string[]; tags: string[] } {
+  const parts = fold(query).split(/\s+/).filter(Boolean)
+  return {
+    words: parts.filter((part) => !part.startsWith('#')),
+    tags: parts.filter((part) => part.startsWith('#')).map((part) => part.slice(1)).filter(Boolean)
+  }
+}
+
 /**
  * Every word must appear somewhere (title, text, tags, stack, path; notes have no text here). A word
  * that starts a word of the title counts twice, one inside it once; then the rank, then the title.
  * A word that no item contains is taken for a typo: it matches a word of a title, tag, stack or path
- * one letter away, and counts once when that word is in the title.
+ * one letter away, and counts once when that word is in the title. `#tag` keeps the items with a tag
+ * that starts with it.
  */
 export function search<T extends BeyntItem>(items: T[], query: string, rank: (item: T) => number = () => 0): T[] {
-  const words = fold(query).split(/\s+/).filter(Boolean)
-  const entries = items.map((item) => {
-    const title = fold(item.title)
-    const names = `${title}\n${fold(item.tags.join(' '))}\n${fold(item.stackName)}\n${fold(item.path ?? '')}`
-    return { item, title, names, haystack: item.type === 'note' ? names : `${names}\n${fold(item.text)}` }
-  })
+  const { words, tags } = parseQuery(query)
+  const entries = items
+    .filter((item) => tags.every((tag) => item.tags.some((own) => fold(own).startsWith(tag))))
+    .map((item) => {
+      const title = fold(item.title)
+      const names = `${title}\n${fold(item.tags.join(' '))}\n${fold(item.stackName)}\n${fold(item.path ?? '')}`
+      return { item, title, names, haystack: item.type === 'note' ? names : `${names}\n${fold(item.text)}` }
+    })
   const typos = new Set(words.filter((word) => word.length >= TYPO_MIN_LENGTH && !entries.some((entry) => entry.haystack.includes(word))))
   const scored: { item: T; score: number; rank: number }[] = []
   for (const { item, title, names, haystack } of entries) {

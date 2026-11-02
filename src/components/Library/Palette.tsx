@@ -144,7 +144,7 @@ export function Palette() {
         {results.length === 0 && (
           <li className="palette__empty">{library.items.length === 0
             ? text('Nothing yet: connect Beynt in the app.', 'Ancora niente: collega Beynt nell’app.')
-            : text('Nothing matches. A stack’s name narrows the search to it.', 'Nessun risultato. Il nome di uno stack limita la ricerca a quello.')}</li>
+            : text('Nothing matches. A stack’s name or a #tag narrows the search.', 'Nessun risultato. Il nome di uno stack o un #tag restringono la ricerca.')}</li>
         )}
       </ul>
       {error
