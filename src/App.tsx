@@ -7,6 +7,7 @@ import { Toaster } from './components/Toaster/Toaster'
 import { LibraryPanel } from './components/Library/LibraryPanel'
 import { Palette } from './components/Library/Palette'
 import { SettingsPanel } from './components/Settings/SettingsPanel'
+import { Onboarding } from './components/Onboarding/Onboarding'
 import { useAccountStore } from './store/account'
 import { connectLibrary } from './store/library'
 import { useSettingsStore } from './store/settings'
@@ -27,6 +28,7 @@ const SHORTCUTS: Record<string, AppAction> = { '1': 'library', ',': 'settings', 
 
 function MainWindow() {
   const surface = useWorkspaceStore((s) => s.surface)
+  const { checked, connected } = useAccountStore()
 
   useEffect(() => {
     void useAccountStore.getState().refresh()
@@ -50,11 +52,16 @@ function MainWindow() {
 
   return (
     <div className="app">
-      <TitleBar />
-      <div className="workspace">
-        <Sidebar />
-        {surface === 'library' ? <LibraryPanel /> : <SettingsPanel />}
-      </div>
+      <TitleBar menus={connected} />
+      {/* Nothing until the account is read; then the library, or the connection it needs first. */}
+      {checked && (connected
+        ? (
+          <div className="workspace">
+            <Sidebar />
+            {surface === 'library' ? <LibraryPanel /> : <SettingsPanel />}
+          </div>
+        )
+        : <Onboarding />)}
       <Toaster />
     </div>
   )

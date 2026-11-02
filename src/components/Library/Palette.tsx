@@ -102,6 +102,7 @@ export function Palette() {
       else if (e.key === 'ArrowDown') { e.preventDefault(); setPicked((i) => Math.min((i ?? 0) + 1, actions.length - 1)) }
       else if (e.key === 'ArrowUp') { e.preventDefault(); setPicked((i) => Math.max((i ?? 0) - 1, 0)) }
       else if (e.key === 'Enter') { e.preventDefault(); run(actions[picked], current) }
+      else if (e.key === 'Tab') e.preventDefault()
     } else if (e.key === 'Escape') { e.preventDefault(); void beynt.palette.hide() }
     else if (e.key === 'Tab' && !mod && !e.altKey) { e.preventDefault(); setType((now) => nextType(now, e.shiftKey ? -1 : 1)) }
     else if (e.key === 'ArrowDown') { e.preventDefault(); setSelected((i) => Math.min(i + 1, results.length - 1)) }

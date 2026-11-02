@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use keyring::Entry;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_opener::OpenerExt;
 
 use crate::api::{self, Client};
 use crate::i18n::{italian, text};
@@ -57,6 +58,14 @@ impl Accounts {
         self.current().map_or_else(|| api::DEFAULT_URL.to_string(), |account| account.base_url)
     }
 
+    /// The address the person typed, or the saved one when the field was left empty.
+    fn typed_or_saved(&self, typed: &str) -> String {
+        match api::normalize(typed) {
+            url if url.is_empty() => self.base_url(),
+            url => url,
+        }
+    }
+
     fn save(&self, account: Account) -> Result<(), String> {
         let json = serde_json::to_string(&account).map_err(|error| error.to_string())?;
         self.entry().and_then(|entry| entry.set_password(&json)).map_err(|error| {
@@ -86,14 +95,18 @@ impl Accounts {
     }
 }
 
+fn insecure_address() -> String {
+    text(
+        "The Beynt address must use HTTPS (HTTP only on this computer).",
+        "L’indirizzo di Beynt deve usare HTTPS (HTTP solo su questo computer).",
+    )
+    .into()
+}
+
 /// Checks a key on the routes the library reads, without saving it.
 async fn validate(base_url: &str, token: &str) -> Result<(), String> {
     if !api::is_secure_url(base_url) {
-        return Err(text(
-            "The Beynt address must use HTTPS (HTTP only on this computer).",
-            "L’indirizzo di Beynt deve usare HTTPS (HTTP solo su questo computer).",
-        )
-        .into());
+        return Err(insecure_address());
     }
     let client = Client::new(base_url, token).map_err(|error| error.to_string())?;
     let stacks = client.stacks().await.map_err(|error| match error {
@@ -142,10 +155,7 @@ pub async fn account_connect(
     if token.is_empty() {
         return Err(text("Paste an access key.", "Incolla una chiave di accesso.").into());
     }
-    let base_url = match api::normalize(&base_url) {
-        url if url.is_empty() => accounts.base_url(),
-        url => url,
-    };
+    let base_url = accounts.typed_or_saved(&base_url);
     let revision = accounts.revision.fetch_add(1, Ordering::SeqCst) + 1;
     validate(&base_url, &token).await?;
     if accounts.revision.load(Ordering::SeqCst) != revision {
@@ -162,6 +172,16 @@ pub async fn account_connect(
         _ = app.state::<Libraries>().refresh(&app).await;
     });
     Ok(())
+}
+
+/// Opens the page where the key is created, on the Beynt address being connected (empty: the saved one).
+#[tauri::command]
+pub fn account_open_keys(app: AppHandle, accounts: State<'_, Accounts>, base_url: String) -> Result<(), String> {
+    let base_url = accounts.typed_or_saved(&base_url);
+    if !api::is_secure_url(&base_url) {
+        return Err(insecure_address());
+    }
+    app.opener().open_url(api::access_keys_url(&base_url), None::<&str>).map_err(|error| error.to_string())
 }
 
 #[tauri::command]

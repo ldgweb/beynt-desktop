@@ -12,8 +12,6 @@ interface WorkspaceState {
   setSurface: (surface: Surface) => void
   setSettingsSection: (section: SettingsSection) => void
   showLibrary: (stack: LibraryScope) => void
-  /** Shortcut used wherever the app needs the account first. */
-  openAccount: () => void
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
@@ -22,6 +20,5 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   stack: 'all',
   setSurface: (surface) => set({ surface }),
   setSettingsSection: (settingsSection) => set({ settingsSection }),
-  showLibrary: (stack) => set({ surface: 'library', stack }),
-  openAccount: () => set({ surface: 'settings', settingsSection: 'account' })
+  showLibrary: (stack) => set({ surface: 'library', stack })
 }))

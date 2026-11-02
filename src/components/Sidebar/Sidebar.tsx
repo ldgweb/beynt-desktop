@@ -41,7 +41,7 @@ export function Sidebar() {
   const { surface, setSurface, stack, showLibrary } = useWorkspaceStore()
   const items = useLibraryStore((s) => s.library.items)
   const favorites = useLibraryStore((s) => s.favorites)
-  const account = useAccountStore()
+  const baseUrl = useAccountStore((s) => s.baseUrl)
   const stacks = useMemo(() => {
     const counts = new Map<number, { name: string; count: number }>()
     for (const item of items) counts.set(item.stackId, { name: item.stackName, count: (counts.get(item.stackId)?.count ?? 0) + 1 })
@@ -49,7 +49,7 @@ export function Sidebar() {
   }, [items])
   // Favorites of items that are gone stay saved, but are not counted.
   const pinned = useMemo(() => items.filter((item) => favorites.includes(item.id)).length, [items, favorites])
-  const host = account.baseUrl.replace(/^https?:\/\//, '')
+  const host = baseUrl.replace(/^https?:\/\//, '')
 
   return (
     <nav className="sidebar" aria-label={text('Navigation', 'Navigazione')}>
@@ -75,9 +75,9 @@ export function Sidebar() {
       <button className={`sidebar__item ${surface === 'settings' ? 'is-active' : ''}`} aria-current={surface === 'settings' ? 'page' : undefined} onClick={() => setSurface('settings')}>
         <IconSettings size={16} /><span className="sidebar__label">{t('nav.settings')}</span>
       </button>
-      <div className="sidebar__account" title={account.connected ? account.baseUrl : undefined}>
-        <span className={`dot ${account.connected ? 'is-on' : ''}`} />
-        {account.connected ? host : text('Not connected', 'Non connesso')}
+      <div className="sidebar__account" title={baseUrl}>
+        <span className="dot is-on" />
+        {host}
       </div>
     </nav>
   )

@@ -120,8 +120,8 @@ function WindowControls() {
   )
 }
 
-/** Empty areas drag the window; a double click maximizes it. */
-export function TitleBar() {
+/** Empty areas drag the window; a double click maximizes it. No menus before Beynt is connected: nothing to open yet. */
+export function TitleBar({ menus }: { menus: boolean }) {
   const { text } = useI18n()
   return (
     <header className="titlebar" data-tauri-drag-region>
@@ -129,7 +129,7 @@ export function TitleBar() {
         <BeyntLogo height={18} />
         {import.meta.env.DEV && <span className="titlebar__dev" title={text('Development build · separate profile', 'Versione di sviluppo · profilo separato')}>DEV</span>}
       </button>
-      {!isMac && <WindowMenus />}
+      {menus && !isMac && <WindowMenus />}
       {isWindows && <WindowControls />}
     </header>
   )

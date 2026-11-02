@@ -142,6 +142,7 @@ fn main() {
             account::account_status,
             account::account_connect,
             account::account_disconnect,
+            account::account_open_keys,
             library::library_get,
             library::library_refresh,
             library::library_search,

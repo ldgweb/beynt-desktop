@@ -3,7 +3,6 @@ import type { BeyntCommand, BeyntItem, PaletteStatus } from '../../types'
 import { beynt, errorText } from '../../api'
 import { actionForKey, actionsFor, keyLabel as formatKeys, placeholders, type ItemAction } from '../../core/commands'
 import { copyCommand, runItemAction, useLibraryStore } from '../../store/library'
-import { useAccountStore } from '../../store/account'
 import { useWorkspaceStore } from '../../store/workspace'
 import { useResults, type TypeFilter } from '../../hooks/useResults'
 import { toast } from '../../store/toasts'
@@ -65,10 +64,23 @@ function Detail({ item, favorite, onRun, onCopy, fillFocus }: { item: BeyntItem 
   )
 }
 
+/** No items: still on their way from Beynt (right after connecting), or none saved yet. */
+function EmptyLibrary({ loading }: { loading: boolean }) {
+  const { text } = useI18n()
+  if (loading) return <p className="hint library__none">{text('Loading your library from Beynt…', 'Carico la tua libreria da Beynt…')}</p>
+  return (
+    <div className="empty">
+      <IconLibrary size={22} />
+      <h2>{text('Nothing here yet', 'Ancora niente qui')}</h2>
+      <p>{text('Save a command, query, config, prompt or note in a Beynt stack, from the site or your AI app, then update.', 'Salva un comando, una query, una config, un prompt o una nota in uno stack Beynt, dal sito o dalla tua app IA, poi aggiorna.')}</p>
+      <button className="btn" onClick={() => void useLibraryStore.getState().refresh()}>{text('Update', 'Aggiorna')}</button>
+    </div>
+  )
+}
+
 export function LibraryPanel() {
   const { t, text, language } = useI18n()
   const { library, loaded, refreshing, error, favorites } = useLibraryStore()
-  const connected = useAccountStore((s) => s.connected)
   const stack = useWorkspaceStore((s) => s.stack)
   const [query, setQuery] = useState('')
   const [type, setType] = useState<TypeFilter>('all')
@@ -114,7 +126,7 @@ export function LibraryPanel() {
         <span className="page-header__sub">{shortcut?.registered
           ? text(`${keyLabel} from any app`, `${keyLabel} da qualsiasi app`)
           : text('Commands, queries, configs, prompts and notes from your stacks', 'Comandi, query, config, prompt e note dei tuoi stack')}</span>
-        <button className="btn btn--quiet btn--small" disabled={!connected || refreshing} onClick={() => void useLibraryStore.getState().refresh()} title={text('Update from Beynt', 'Aggiorna da Beynt')}>
+        <button className="btn btn--quiet btn--small" disabled={refreshing} onClick={() => void useLibraryStore.getState().refresh()} title={text('Update from Beynt', 'Aggiorna da Beynt')}>
           <IconSync size={14} />{refreshing ? text('Updating…', 'Aggiorno…') : text('Update', 'Aggiorna')}
         </button>
       </header>
@@ -141,12 +153,6 @@ export function LibraryPanel() {
             <TypeFilterBar value={type} onChange={(next) => { setType(next); setSelectedId(null) }} />
           </div>
 
-          {!connected && (
-            <div className="notice notice--inset">
-              <p>{text('Connect Beynt to load your library. What is already loaded works offline.', 'Collega Beynt per caricare la tua libreria. Quello che è già caricato funziona anche offline.')}</p>
-              <button className="btn btn--small" onClick={() => useWorkspaceStore.getState().openAccount()}>{text('Connect', 'Collega')}</button>
-            </div>
-          )}
           {shortcut && !shortcut.registered && <p className="library__status error-text">{shortcut.launchCommand
             ? text('The search shortcut is not active: see Settings → Start-up.', 'La scorciatoia della ricerca non è attiva: vedi Impostazioni → Avvio.')
             : text(`Another app already uses ${keyLabel}: change it in Settings.`, `Un’altra app usa già ${keyLabel}: cambiala in Impostazioni.`)}</p>}
@@ -156,14 +162,7 @@ export function LibraryPanel() {
             {library.syncedAt && <> · {text('updated ', 'aggiornata alle ')}{new Date(library.syncedAt).toLocaleTimeString(language, { hour: '2-digit', minute: '2-digit' })}</>}
           </p>
 
-          {loaded && library.items.length === 0 && connected && !refreshing ? (
-            <div className="empty">
-              <IconLibrary size={22} />
-              <h2>{text('Nothing here yet', 'Ancora niente qui')}</h2>
-              <p>{text('Save a command, query, config, prompt or note in a Beynt stack, from the site or your AI app, then update.', 'Salva un comando, una query, una config, un prompt o una nota in uno stack Beynt, dal sito o dalla tua app IA, poi aggiorna.')}</p>
-              <button className="btn" onClick={() => void useLibraryStore.getState().refresh()}>{text('Update', 'Aggiorna')}</button>
-            </div>
-          ) : (
+          {loaded && library.items.length === 0 ? <EmptyLibrary loading={refreshing} /> : (
             <ul ref={rows} className="library__rows rows" role="listbox" aria-label={t('nav.library')}>
               {groups.flatMap((group) => [
                 group.label ? <GroupLabel key={`label:${group.label}`}>{group.label}</GroupLabel> : null,

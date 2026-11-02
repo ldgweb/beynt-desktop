@@ -18,8 +18,9 @@ For Windows, macOS and Linux.
   reach, filtered by stack and type, a stack grouped by its folders. Beynt stays the only source: the
   app keeps a local copy for instant search and offline use, updates it every 10 minutes while it
   runs, downloads only what changed, and never keeps a note's text.
-- **Account** — an access key with `stacks:read` and `artifacts:read`
-  (Beynt → Manage access → Create access key), kept in the system keychain. The app only reads.
+- **Account** — the first window asks for an access key: it opens the page on Beynt where you create
+  one (*Find work only*, that is `stacks:read` and `artifacts:read`). The key is kept in the system
+  keychain, and the app only reads.
 
 Beynt starts at login in the tray (Settings → Start-up), so the shortcut works right away; closing the
 window keeps it running in the tray or the Mac's menu bar, and the tray menu (⌘Q on a Mac) quits. On

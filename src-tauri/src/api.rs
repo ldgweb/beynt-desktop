@@ -32,6 +32,11 @@ pub fn artifact_url(base: &str, stack_id: u64, id: u64) -> String {
     format!("{base}/workspace/stack/{stack_id}?openArtifact={id}")
 }
 
+/// The account page where a person creates the access key the app asks for.
+pub fn access_keys_url(base: &str) -> String {
+    format!("{base}/account/api-tokens#advanced-access")
+}
+
 /// A local Beynt (ddev) uses mkcert certificates. Only development builds accept them unverified:
 /// `*.ddev.site` and `*.localhost` resolve through public DNS.
 fn is_local_dev_host(host: &str) -> bool {
@@ -299,6 +304,10 @@ mod tests {
         assert_eq!(
             artifact_url(&normalize("https://beynt.com/ "), 6, 97),
             "https://beynt.com/workspace/stack/6?openArtifact=97"
+        );
+        assert_eq!(
+            access_keys_url(&normalize("https://beynt.com/")),
+            "https://beynt.com/account/api-tokens#advanced-access"
         );
     }
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { PaletteStatus, StartupStatus } from '../../types'
 import { beynt, errorText } from '../../api'
 import { useWorkspaceStore, type SettingsSection } from '../../store/workspace'
@@ -19,28 +19,20 @@ function Field({ label, hint, children }: { label: string; hint?: ReactNode; chi
   )
 }
 
+/** The connection in use; disconnecting brings the window back to connecting Beynt. */
 function AccountSection() {
   const { text } = useI18n()
-  const status = useAccountStore()
-  const [token, setToken] = useState('')
-  const [baseUrl, setBaseUrl] = useState(status.baseUrl || 'https://beynt.com')
+  const baseUrl = useAccountStore((s) => s.baseUrl)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const editedUrl = useRef(false)
-  useEffect(() => { void useAccountStore.getState().refresh() }, [])
-  useEffect(() => { if (!editedUrl.current && status.baseUrl) setBaseUrl(status.baseUrl) }, [status.baseUrl])
 
-  const change = async (disconnect: boolean): Promise<void> => {
-    if (busy || (!disconnect && !token.trim())) return
+  const disconnect = async (): Promise<void> => {
     setBusy(true); setError('')
     try {
-      if (disconnect) await beynt.account.disconnect()
-      else await beynt.account.connect(token.trim(), baseUrl.trim())
+      await beynt.account.disconnect()
       await useAccountStore.getState().refresh()
-      setToken('')
-    } catch (err) {
-      setError(errorText(err))
-    } finally {
+    } catch (failure) {
+      setError(errorText(failure))
       setBusy(false)
     }
   }
@@ -48,28 +40,10 @@ function AccountSection() {
   return (
     <section className="section">
       <h2 className="section__title">{text('Beynt account', 'Account Beynt')}</h2>
-      {status.connected ? (
-        <Field label={text('Connected to', 'Collegato a')} hint={text('The library holds the stacks this key can reach.', 'La libreria contiene gli stack che questa chiave raggiunge.')}>
-          <span className="dot is-on" /><span className="field__grow">{status.baseUrl.replace(/^https?:\/\//, '')}</span>
-          <button className="btn btn--small" disabled={busy} onClick={() => void change(true)}>{text('Disconnect', 'Scollega')}</button>
-        </Field>
-      ) : (
-        <form onSubmit={(e) => { e.preventDefault(); void change(false) }}>
-          <Field label={text('Access key', 'Chiave di accesso')} hint={text(
-            'Beynt → Manage access → Create access key, with stacks:read and artifacts:read. Kept in the system keychain.',
-            'Beynt → Manage access → Create access key, con stacks:read e artifacts:read. Custodita nel portachiavi del sistema.'
-          )}>
-            <input id="account-token" className="input input--mono" type="password" autoComplete="off" value={token} disabled={busy} onChange={(e) => setToken(e.target.value)} />
-          </Field>
-          <Field label="URL">
-            <input id="account-url" className="input" type="url" value={baseUrl} disabled={busy} spellCheck={false} onChange={(e) => { editedUrl.current = true; setBaseUrl(e.target.value) }} />
-          </Field>
-          <div className="field field--last">
-            <span />
-            <div className="field__control"><button className="btn btn--primary" disabled={busy || !token.trim()}>{busy ? text('Connecting…', 'Collegamento…') : text('Connect', 'Collega')}</button></div>
-          </div>
-        </form>
-      )}
+      <Field label={text('Connected to', 'Collegato a')} hint={text('The library holds the stacks this key can reach.', 'La libreria contiene gli stack che questa chiave raggiunge.')}>
+        <span className="dot is-on" /><span className="field__grow">{baseUrl.replace(/^https?:\/\//, '')}</span>
+        <button className="btn btn--small" disabled={busy} onClick={() => void disconnect()}>{text('Disconnect', 'Scollega')}</button>
+      </Field>
       {error && <p className="error-text" role="alert">{error}</p>}
     </section>
   )

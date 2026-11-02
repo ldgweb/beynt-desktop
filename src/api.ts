@@ -31,6 +31,8 @@ export const beynt = {
     status: () => invoke<BeyntAccountStatus>('account_status'),
     /** Checks the key on Beynt first; a refused key is never saved. */
     connect: (token: string, baseUrl: string) => invoke<void>('account_connect', { token, baseUrl }),
+    /** Beynt's page where the key is created, on that address (empty: the saved one). */
+    openKeys: (baseUrl: string) => invoke<void>('account_open_keys', { baseUrl }),
     disconnect: () => invoke<void>('account_disconnect')
   },
 
