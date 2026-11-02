@@ -1,6 +1,6 @@
 [package]
 name = "beynt-desktop"
-version = "0.7.0"
+version = "0.7.1"
 description = "Beynt desktop: your Beynt commands and notes from any app"
 edition = "2024"
 license = "MIT"
